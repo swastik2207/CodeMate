@@ -7,11 +7,14 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class JwtUtil {
 
-    private final String SECRET = "mndsjbsjdbjsbjsbn3434343jDD";
+    
+    @Value("${jwt.secret}")
+    private String SECRET;
 
     /**
      * Validate the JWT token.

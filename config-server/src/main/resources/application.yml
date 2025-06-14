@@ -1,0 +1,14 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/swastik2207/config-repo
+          username: swastik2207
+          clone-on-start: true
+          default-label: main

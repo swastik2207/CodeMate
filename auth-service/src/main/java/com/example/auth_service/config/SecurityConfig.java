@@ -1,6 +1,10 @@
-package com.example.authservice.config;
+
+
+package com.example.auth_service.config;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -10,14 +14,14 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf().disable() // disable CSRF for testing (enable in prod with tokens)
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/code/execute").permitAll()
-                .anyRequest().authenticated()
+                .requestMatchers("/auth/login").permitAll()  // Allow unauthenticated
+                .anyRequest().authenticated()                  // Protect others
             )
-            .httpBasic(); // or use JWT/auth mechanism
+            .httpBasic(Customizer.withDefaults()); // or formLogin(Customizer.withDefaults())
 
         return http.build();
     }

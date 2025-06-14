@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/execute")
+@RequestMapping("/code/execute")
 public class CodeExecutionController {
 
     @Autowired
@@ -15,6 +15,6 @@ public class CodeExecutionController {
     @PostMapping
     public String execute(@RequestBody CodeExecutionRequest request) {
         producerService.send(request);
-        return "Execution request sent to Kafka";
+        return "Execution request sent Successfully";
     }
 }

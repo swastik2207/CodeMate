@@ -5,10 +5,11 @@ import com.example.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.user_service.dto.LoginRequest;
 
 
 @RestController
-@RequestMapping("/")
+@RequestMapping("/user")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -21,10 +22,11 @@ public class UserController {
     }
 
     @GetMapping("/{username}")
-    public ResponseEntity<User> getUser(@PathVariable String username) {
+    public ResponseEntity<LoginRequest> getUser(@PathVariable String username) {
       User user = userService.findByUsername(username);
     if (user != null) {
-        return ResponseEntity.ok(user);
+         LoginRequest loginRequest = new LoginRequest(user.getUsername(), user.getPassword());
+        return ResponseEntity.ok(loginRequest);
     } else {
         return ResponseEntity.notFound().build();
     }
