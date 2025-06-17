@@ -1,12 +1,16 @@
 package com.example.demo.consumer;
 
 import com.example.demo.dto.CodeSubmissionRequest;
+import com.example.demo.dto.CodeExecutionResult;
 import com.example.demo.service.CodeExecutionService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Service;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+
 
 import java.util.Map;
 
@@ -15,25 +19,46 @@ public class CodeSubmissionConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(CodeSubmissionConsumer.class);
 
-    @Autowired
-    private CodeExecutionService codeExecutionService;
+@Autowired
+CodeExecutionService codeExecutionService;
 
-    @KafkaListener(
-        topics = "code-execution-requests",
-        groupId = "code-executor-group",
-        containerFactory = "customKafkaListenerFactory"
-    )
-    public void consume(CodeSubmissionRequest request) {
-        logger.info(" Received code submission request from Kafka topic 'code-execution-requests'");
-        logger.debug(" Code: {}, Language: {}", request.getCode(), request.getLanguage());
+@Autowired
+KafkaTemplate<String,CodeExecutionResult>kafkaTemplate;
 
-        try {
-            Map<String, String> result = codeExecutionService.executeCode(request);
+   @KafkaListener(
+    topics = "code-execution-requests",
+    groupId = "code-executor-group",
+    containerFactory = "customKafkaListenerFactory"
+)
+public void consume(CodeSubmissionRequest request) {
+    logger.info(" Received code submission request for execution. Request ID: {}", request.getRequestId());
 
-            logger.info(" Execution result:");
-            result.forEach((key, value) -> logger.info("  {}: {}", key, value));
-        } catch (Exception e) {
-            logger.error(" Error executing code: {}", e.getMessage(), e);
-        }
+    try {
+        Map<String, String> result = codeExecutionService.executeCode(request);
+
+        String output = result.get("output");
+        logger.info(" Code execution completed. Output: {}", output);
+
+        CodeExecutionResult executionResult = new CodeExecutionResult();
+        executionResult.setRequestId(request.getRequestId());
+        executionResult.setUserId(request.getUserId());
+        executionResult.setOutput(output);
+        executionResult.setStatus("SUCCESS");
+        executionResult.setError(null);
+
+        kafkaTemplate.send("code-execution-results", executionResult);
+        logger.info(" Pushed execution result to 'code-execution-results' topic");
+
+    } catch (Exception e) {
+        CodeExecutionResult errorResult = new CodeExecutionResult();
+        errorResult.setRequestId(request.getRequestId());
+        errorResult.setUserId(request.getUserId());
+        errorResult.setStatus("FAILED");
+        errorResult.setError(e.getMessage());
+
+        kafkaTemplate.send("code-execution-results", errorResult);
+        logger.error(" Execution failed. Sent error result to Kafka. Error: {}", e.getMessage(), e);
     }
+}
+
 }

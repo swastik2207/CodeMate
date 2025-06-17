@@ -10,5 +10,10 @@ public class CodeExecutionRequest {
     private List<String> inputs;
     private Integer timeLimit;
     private Integer memoryLimit;
-    private String userId;  // Injected from JWT auth
+    private String userId;// Injected from JWT auth
+    private String requestId;  
+
+    public void setRequestId( String requestId){
+        this.requestId=requestId;
+    }
 }

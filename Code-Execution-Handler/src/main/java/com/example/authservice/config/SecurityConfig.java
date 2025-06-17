@@ -14,7 +14,7 @@ public class SecurityConfig {
         http
             .csrf().disable() // disable CSRF for testing (enable in prod with tokens)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/code/execute").permitAll()
+                .requestMatchers("/code/**").permitAll()
                 .anyRequest().authenticated()
             )
             .httpBasic(); // or use JWT/auth mechanism

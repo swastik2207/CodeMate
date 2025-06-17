@@ -2,7 +2,9 @@ package com.example.demo.dto;
 
 import lombok.Data;
 import java.util.List;
+import lombok.Getter;
 
+@Getter
 @Data
 public class CodeSubmissionRequest {
     private String code;
@@ -11,4 +13,5 @@ public class CodeSubmissionRequest {
     private Integer timeLimit;
     private Integer memoryLimit;
     private String userId;
+    private String requestId;
 }

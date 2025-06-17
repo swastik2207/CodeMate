@@ -17,16 +17,14 @@ public class CodeExecutionService {
         List<String> inputs = request.getInputs();
         String userId = request.getUserId();
 
-        // Step 1: Create a temporary working directory
         Path tempDir;
         try {
             tempDir = Files.createTempDirectory("codeExec");
         } catch (IOException e) {
-            result.put("error", "Failed to create temporary directory: " + e.getMessage());
+            result.put("error", "Failed to create temp dir: " + e.getMessage());
             return result;
         }
 
-        // Step 2: Prepare filenames and commands
         String fileName;
         String compileCommand = null;
         String runCommand;
@@ -51,18 +49,16 @@ public class CodeExecutionService {
                 return result;
         }
 
-        // Step 3: Write code to file
         Path codeFile = tempDir.resolve(fileName);
         try {
             Files.write(codeFile, code.getBytes());
         } catch (IOException e) {
-            result.put("error", "Failed to write code to file: " + e.getMessage());
+            result.put("error", "Failed to write code file: " + e.getMessage());
             return result;
         }
 
-        // Step 4: Write Dockerfile
-        String dockerfileContent = generateDockerfile(language, fileName, compileCommand, runCommand);
         Path dockerfile = tempDir.resolve("Dockerfile");
+        String dockerfileContent = generateDockerfile(language, fileName, compileCommand);
         try {
             Files.write(dockerfile, dockerfileContent.getBytes());
         } catch (IOException e) {
@@ -70,17 +66,17 @@ public class CodeExecutionService {
             return result;
         }
 
-        // Step 5: Build Docker image
         String imageTag = "code-executor-" + userId;
         ProcessBuilder buildProcessBuilder = new ProcessBuilder("docker", "build", "-t", imageTag, ".");
         buildProcessBuilder.directory(tempDir.toFile());
         buildProcessBuilder.redirectErrorStream(true);
+
         try {
             Process buildProcess = buildProcessBuilder.start();
             streamProcessOutput(buildProcess);
-            int buildExitCode = buildProcess.waitFor();
-            if (buildExitCode != 0) {
-                result.put("error", "Docker build failed. Check logs for details.");
+            int exit = buildProcess.waitFor();
+            if (exit != 0) {
+                result.put("error", "Docker build failed.");
                 return result;
             }
         } catch (IOException | InterruptedException e) {
@@ -88,8 +84,7 @@ public class CodeExecutionService {
             return result;
         }
 
-        // Step 6: Manage user-specific Docker container
-        String containerName = "code-executor-" + "12345" ;
+        String containerName = "code-executor-" + userId;
         String inputData = String.join("\n", inputs != null ? inputs : Collections.emptyList());
 
         if (!containerExists(containerName)) {
@@ -101,13 +96,12 @@ public class CodeExecutionService {
                         "--name", containerName,
                         imageTag, "sh"
                 );
-                createContainerBuilder.directory(tempDir.toFile());
                 createContainerBuilder.redirectErrorStream(true);
+                createContainerBuilder.directory(tempDir.toFile());
                 Process createProcess = createContainerBuilder.start();
                 streamProcessOutput(createProcess);
-                int exitCode = createProcess.waitFor();
-                if (exitCode != 0) {
-                    result.put("error", "Failed to create Docker container for user.");
+                if (createProcess.waitFor() != 0) {
+                    result.put("error", "Failed to create Docker container.");
                     return result;
                 }
             } catch (IOException | InterruptedException e) {
@@ -116,25 +110,20 @@ public class CodeExecutionService {
             }
         }
 
-        // Step 6.2: Copy source file into container
         try {
-            ProcessBuilder copyToContainer = new ProcessBuilder(
-                    "docker", "cp", codeFile.toString(), containerName + ":/app/" + fileName
-            );
-            copyToContainer.redirectErrorStream(true);
-            Process copyProcess = copyToContainer.start();
+            ProcessBuilder copyBuilder = new ProcessBuilder("docker", "cp", codeFile.toString(), containerName + ":/app/" + fileName);
+            copyBuilder.redirectErrorStream(true);
+            Process copyProcess = copyBuilder.start();
             streamProcessOutput(copyProcess);
-            int copyExit = copyProcess.waitFor();
-            if (copyExit != 0) {
-                result.put("error", "Failed to copy source file into container.");
+            if (copyProcess.waitFor() != 0) {
+                result.put("error", "Failed to copy file to container.");
                 return result;
             }
         } catch (IOException | InterruptedException e) {
-            result.put("error", "Error copying file to container: " + e.getMessage());
+            result.put("error", "Error copying to container: " + e.getMessage());
             return result;
         }
 
-        // Step 6.3: Compile if necessary
         if (compileCommand != null) {
             try {
                 ProcessBuilder compileBuilder = new ProcessBuilder(
@@ -143,8 +132,7 @@ public class CodeExecutionService {
                 compileBuilder.redirectErrorStream(true);
                 Process compileProcess = compileBuilder.start();
                 streamProcessOutput(compileProcess);
-                int compileExit = compileProcess.waitFor();
-                if (compileExit != 0) {
+                if (compileProcess.waitFor() != 0) {
                     result.put("error", "Compilation failed.");
                     return result;
                 }
@@ -154,51 +142,34 @@ public class CodeExecutionService {
             }
         }
 
-        // Step 6.4: Run the code with input
         try {
-            ProcessBuilder runBuilder = new ProcessBuilder(
-                    "docker", "exec", "-i", containerName, "sh", "-c", runCommand
-            );
+            ProcessBuilder runBuilder = new ProcessBuilder("docker", "exec", "-i", containerName, "sh", "-c", runCommand);
             runBuilder.redirectErrorStream(true);
             Process runProcess = runBuilder.start();
 
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(runProcess.getOutputStream()))) {
                 writer.write(inputData);
                 writer.flush();
-                writer.close();
             }
 
-            String runOutput = readProcessOutput(runProcess.getInputStream());
-            int runExitCode = runProcess.waitFor();
+            String output = readProcessOutput(runProcess.getInputStream());
+            int exit = runProcess.waitFor();
 
-            if (runExitCode != 0) {
-                result.put("error", "Execution failed:\n" + runOutput);
+            if (exit != 0) {
+                result.put("error", "Execution failed.\n" + output);
             } else {
-                result.put("output", runOutput);
+                System.out.println("✅ Code output:\n" + output); // log the output
+                result.put("output", output);
             }
         } catch (IOException | InterruptedException e) {
-            result.put("error", "Error executing code in container: " + e.getMessage());
+            result.put("error", "Execution error: " + e.getMessage());
         }
 
+        System.out.println("📦 Final Result Map: " + result); // full map log
         return result;
     }
 
-    private boolean containerExists(String containerName) {
-        try {
-            ProcessBuilder checkBuilder = new ProcessBuilder(
-                    "docker", "ps", "-a", "--filter", "name=" + containerName, "--format", "{{.Names}}"
-            );
-            Process checkProcess = checkBuilder.start();
-            String output = readProcessOutput(checkProcess.getInputStream());
-            checkProcess.waitFor();
-            return output.trim().equals(containerName);
-        } catch (IOException | InterruptedException e) {
-            System.err.println("[ERROR] Failed to check container existence: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private String generateDockerfile(String language, String fileName, String compileCommand, String runCommand) {
+    private String generateDockerfile(String language, String fileName, String compileCommand) {
         StringBuilder dockerfile = new StringBuilder();
         dockerfile.append("FROM ");
         switch (language) {
@@ -212,44 +183,50 @@ public class CodeExecutionService {
                 dockerfile.append("gcc:latest\n");
                 break;
         }
-
         dockerfile.append("WORKDIR /app\n");
         dockerfile.append("COPY ").append(fileName).append(" .\n");
-
         if (compileCommand != null) {
             dockerfile.append("RUN ").append(compileCommand).append("\n");
         }
-
-        dockerfile.append("CMD tail -f /dev/null\n"); // Keep container running
-
+        dockerfile.append("CMD tail -f /dev/null\n"); // keep container alive
         return dockerfile.toString();
     }
 
+    private boolean containerExists(String name) {
+        try {
+            ProcessBuilder builder = new ProcessBuilder("docker", "ps", "-a", "--filter", "name=" + name, "--format", "{{.Names}}");
+            Process process = builder.start();
+            String output = readProcessOutput(process.getInputStream());
+            process.waitFor();
+            return output.trim().equals(name);
+        } catch (IOException | InterruptedException e) {
+            System.err.println("[ERROR] Container check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     private void streamProcessOutput(Process process) {
-        Thread stdout = new Thread(() -> {
+        new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     System.out.println("[DOCKER] " + line);
                 }
             } catch (IOException e) {
-                System.err.println("[DOCKER ERROR] Failed to read stdout: " + e.getMessage());
+                System.err.println("[DOCKER ERROR] Stdout error: " + e.getMessage());
             }
-        });
+        }).start();
 
-        Thread stderr = new Thread(() -> {
+        new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     System.err.println("[DOCKER ERROR] " + line);
                 }
             } catch (IOException e) {
-                System.err.println("[DOCKER ERROR] Failed to read stderr: " + e.getMessage());
+                System.err.println("[DOCKER ERROR] Stderr error: " + e.getMessage());
             }
-        });
-
-        stdout.start();
-        stderr.start();
+        }).start();
     }
 
     private String readProcessOutput(InputStream inputStream) throws IOException {
