@@ -17,7 +17,7 @@ public class SseEmitterService {
         emitters.put(userId, emitter);
     }
 
-    public void sendToUser(String requestId, Map<String,String> data) {
+    public void sendToUser(String requestId, Map<String,Object> data) {
     for (int i = 0; i < 10; i++) {
         SseEmitter emitter = emitters.get(requestId);
         if (emitter != null) {

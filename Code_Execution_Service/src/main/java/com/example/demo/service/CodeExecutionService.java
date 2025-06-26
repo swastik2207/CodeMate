@@ -10,18 +10,22 @@ import java.util.*;
 @Service
 public class CodeExecutionService {
 
-    public Map<String, String> executeCode(CodeSubmissionRequest request) {
-        Map<String, String> result = new HashMap<>();
+    public Map<String, List<String>> executeCode(CodeSubmissionRequest request) {
+        Map<String, List<String>> result = new HashMap<>();
+        List<String> verdicts = new ArrayList<>();
+        List<String> actualOutputs = new ArrayList<>();
+
         String language = request.getLanguage().toLowerCase();
         String code = request.getCode();
-        List<String> inputs = request.getInputs();
+        List<List<String>> inputCases = request.getInputs() != null ? request.getInputs() : List.of();
+  
         String userId = request.getUserId();
 
         Path tempDir;
         try {
             tempDir = Files.createTempDirectory("codeExec");
         } catch (IOException e) {
-            result.put("error", "Failed to create temp dir: " + e.getMessage());
+            result.put("error", List.of("Failed to create temp dir: " + e.getMessage()));
             return result;
         }
 
@@ -45,7 +49,7 @@ public class CodeExecutionService {
                 runCommand = "./program";
                 break;
             default:
-                result.put("error", "Unsupported language: " + language);
+                result.put("error", List.of("Unsupported language: " + language));
                 return result;
         }
 
@@ -53,7 +57,7 @@ public class CodeExecutionService {
         try {
             Files.write(codeFile, code.getBytes());
         } catch (IOException e) {
-            result.put("error", "Failed to write code file: " + e.getMessage());
+            result.put("error", List.of( "Failed to write code file: " + e.getMessage()));
             return result;
         }
 
@@ -62,7 +66,7 @@ public class CodeExecutionService {
         try {
             Files.write(dockerfile, dockerfileContent.getBytes());
         } catch (IOException e) {
-            result.put("error", "Failed to write Dockerfile: " + e.getMessage());
+            result.put("error", List.of("Failed to write Dockerfile: " + e.getMessage()));
             return result;
         }
 
@@ -74,38 +78,33 @@ public class CodeExecutionService {
         try {
             Process buildProcess = buildProcessBuilder.start();
             streamProcessOutput(buildProcess);
-            int exit = buildProcess.waitFor();
-            if (exit != 0) {
-                result.put("error", "Docker build failed.");
+            if (buildProcess.waitFor() != 0) {
+                result.put("error",List.of( "Docker build failed."));
                 return result;
             }
         } catch (IOException | InterruptedException e) {
-            result.put("error", "Docker build error: " + e.getMessage());
+            result.put("error", List.of( "Docker build error: " + e.getMessage()));
             return result;
         }
 
         String containerName = "code-executor-" + userId;
-        String inputData = String.join("\n", inputs != null ? inputs : Collections.emptyList());
 
         if (!containerExists(containerName)) {
             try {
                 ProcessBuilder createContainerBuilder = new ProcessBuilder(
-                        "docker", "run", "-dit",
-                        "--memory=512m",
-                        "--cpus=1",
-                        "--name", containerName,
-                        imageTag, "sh"
+                        "docker", "run", "-dit", "--memory=512m", "--cpus=1",
+                        "--name", containerName, imageTag, "sh"
                 );
                 createContainerBuilder.redirectErrorStream(true);
                 createContainerBuilder.directory(tempDir.toFile());
                 Process createProcess = createContainerBuilder.start();
                 streamProcessOutput(createProcess);
                 if (createProcess.waitFor() != 0) {
-                    result.put("error", "Failed to create Docker container.");
+                    result.put("error",List.of( "Failed to create Docker container."));
                     return result;
                 }
             } catch (IOException | InterruptedException e) {
-                result.put("error", "Error creating Docker container: " + e.getMessage());
+                result.put("error", List.of("Error creating Docker container: " + e.getMessage()));
                 return result;
             }
         }
@@ -116,72 +115,69 @@ public class CodeExecutionService {
             Process copyProcess = copyBuilder.start();
             streamProcessOutput(copyProcess);
             if (copyProcess.waitFor() != 0) {
-                result.put("error", "Failed to copy file to container.");
+                result.put("error", List.of("Failed to copy file to container."));
                 return result;
             }
         } catch (IOException | InterruptedException e) {
-            result.put("error", "Error copying to container: " + e.getMessage());
+            result.put("error", List.of("Error copying to container: " + e.getMessage()));
             return result;
         }
 
         if (compileCommand != null) {
             try {
-                ProcessBuilder compileBuilder = new ProcessBuilder(
-                        "docker", "exec", containerName, "sh", "-c", compileCommand
-                );
+                ProcessBuilder compileBuilder = new ProcessBuilder("docker", "exec", containerName, "sh", "-c", compileCommand);
                 compileBuilder.redirectErrorStream(true);
                 Process compileProcess = compileBuilder.start();
                 streamProcessOutput(compileProcess);
                 if (compileProcess.waitFor() != 0) {
-                    result.put("error", "Compilation failed.");
+                    result.put("error", List.of("Compilation failed."));
                     return result;
                 }
             } catch (IOException | InterruptedException e) {
-                result.put("error", "Error compiling code: " + e.getMessage());
+                result.put("error", List.of("Error compiling code: " + e.getMessage()));
                 return result;
             }
         }
 
-        try {
-            ProcessBuilder runBuilder = new ProcessBuilder("docker", "exec", "-i", containerName, "sh", "-c", runCommand);
-            runBuilder.redirectErrorStream(true);
-            Process runProcess = runBuilder.start();
+        for (int i = 0; i < inputCases.size(); i++) {
+            List<String> testInput = inputCases.get(i);
+            String inputData = String.join("\n", testInput);
 
-            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(runProcess.getOutputStream()))) {
-                writer.write(inputData);
-                writer.flush();
+            try {
+                ProcessBuilder runBuilder = new ProcessBuilder("docker", "exec", "-i", containerName, "sh", "-c", runCommand);
+                runBuilder.redirectErrorStream(true);
+                Process runProcess = runBuilder.start();
+
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(runProcess.getOutputStream()))) {
+                    writer.write(inputData);
+                    writer.flush();
+                }
+
+                String output = readProcessOutput(runProcess.getInputStream()).trim();
+                int exit = runProcess.waitFor();
+
+                if (exit != 0) {
+                    verdicts.add("Test " + (i + 1) + ":  Runtime Error");
+                    actualOutputs.add(output);
+                } else {
+                    actualOutputs.add(output);
+                }
+            } catch (IOException | InterruptedException e) {
+                verdicts.add("Test " + (i + 1) + ":  Exception - " + e.getMessage());
             }
-
-            String output = readProcessOutput(runProcess.getInputStream());
-            int exit = runProcess.waitFor();
-
-            if (exit != 0) {
-                result.put("error", "Execution failed.\n" + output);
-            } else {
-                System.out.println("✅ Code output:\n" + output); // log the output
-                result.put("output", output);
-            }
-        } catch (IOException | InterruptedException e) {
-            result.put("error", "Execution error: " + e.getMessage());
         }
 
-        System.out.println("📦 Final Result Map: " + result); // full map log
+        result.put("verdicts", verdicts);
+        result.put("outputs", actualOutputs);
         return result;
     }
 
     private String generateDockerfile(String language, String fileName, String compileCommand) {
         StringBuilder dockerfile = new StringBuilder();
-        dockerfile.append("FROM ");
         switch (language) {
-            case "java":
-                dockerfile.append("openjdk:17-jdk-alpine\n");
-                break;
-            case "python":
-                dockerfile.append("python:3.9-alpine\n");
-                break;
-            case "c":
-                dockerfile.append("gcc:latest\n");
-                break;
+            case "java" -> dockerfile.append("FROM openjdk:17-jdk-alpine\n");
+            case "python" -> dockerfile.append("FROM python:3.9-alpine\n");
+            case "c" -> dockerfile.append("FROM gcc:latest\n");
         }
         dockerfile.append("WORKDIR /app\n");
         dockerfile.append("COPY ").append(fileName).append(" .\n");
@@ -200,7 +196,6 @@ public class CodeExecutionService {
             process.waitFor();
             return output.trim().equals(name);
         } catch (IOException | InterruptedException e) {
-            System.err.println("[ERROR] Container check failed: " + e.getMessage());
             return false;
         }
     }
@@ -212,20 +207,7 @@ public class CodeExecutionService {
                 while ((line = reader.readLine()) != null) {
                     System.out.println("[DOCKER] " + line);
                 }
-            } catch (IOException e) {
-                System.err.println("[DOCKER ERROR] Stdout error: " + e.getMessage());
-            }
-        }).start();
-
-        new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    System.err.println("[DOCKER ERROR] " + line);
-                }
-            } catch (IOException e) {
-                System.err.println("[DOCKER ERROR] Stderr error: " + e.getMessage());
-            }
+            } catch (IOException ignored) {}
         }).start();
     }
 

@@ -34,7 +34,7 @@ public class CodeExecutionResultConsumer {
         logger.info("Error: {}", result.getError());
 
         // Prepare data to send
-        Map<String, String> data = new HashMap<>();
+        Map<String, Object> data = new HashMap<>();
         data.put("output", result.getOutput());
         data.put("status", result.getStatus());
         data.put("error", result.getError());

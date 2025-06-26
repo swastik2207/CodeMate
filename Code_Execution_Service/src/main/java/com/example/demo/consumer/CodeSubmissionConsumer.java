@@ -12,12 +12,12 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class CodeSubmissionConsumer {
 
-    private static final Logger logger = LoggerFactory.getLogger(CodeSubmissionConsumer.class);
+ private static final Logger logger = LoggerFactory.getLogger(CodeSubmissionConsumer.class);
 
 @Autowired
 CodeExecutionService codeExecutionService;
@@ -34,9 +34,9 @@ public void consume(CodeSubmissionRequest request) {
     logger.info(" Received code submission request for execution. Request ID: {}", request.getRequestId());
 
     try {
-        Map<String, String> result = codeExecutionService.executeCode(request);
+        Map<String, List<String>> result = codeExecutionService.executeCode(request);
 
-        String output = result.get("output");
+        List<String> output = result.get("output");
         logger.info(" Code execution completed. Output: {}", output);
 
         CodeExecutionResult executionResult = new CodeExecutionResult();
