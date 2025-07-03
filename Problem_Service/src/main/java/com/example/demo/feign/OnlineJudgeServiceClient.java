@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@FeignClient(name = "code-execution-service", url = "http://localhost:9090")
+@FeignClient(name = "code-execution-service", url = "http://localhost:8087")
 public interface OnlineJudgeServiceClient {
 
     @PostMapping("/problems/solution/verify")
