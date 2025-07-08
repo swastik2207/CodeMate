@@ -7,7 +7,7 @@ import java.util.List;
 public class CodeExecutionRequest {
     private String code;
     private String language;
-    private List<String> inputs;
+    private List<List<String>> inputs;
     private Integer timeLimit;
     private Integer memoryLimit;
     private String userId;// Injected from JWT auth

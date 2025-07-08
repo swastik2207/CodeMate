@@ -13,4 +13,5 @@ public class CodeSubmissionRequest {
     private Integer memoryLimit;
     private String userId;
     private String requestId;
+    private String problemId; // Added for problem-specific submissions
 }

@@ -4,6 +4,7 @@ import com.example.demo.dto.CodeSubmissionRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -11,5 +12,5 @@ import java.util.List;
 public interface OnlineJudgeServiceClient {
 
     @PostMapping("/problems/solution/verify")
-    List<String> executeForProblem(@RequestBody CodeSubmissionRequest request);
+    ResponseEntity<List<String>> executeForProblem(@RequestBody CodeSubmissionRequest request);
 }

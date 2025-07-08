@@ -36,7 +36,7 @@ public void consume(CodeSubmissionRequest request) {
     try {
         Map<String, List<String>> result = codeExecutionService.executeCode(request);
 
-        List<String> output = result.get("output");
+        List<String> output = result.get("outputs");
         logger.info(" Code execution completed. Output: {}", output);
 
         CodeExecutionResult executionResult = new CodeExecutionResult();

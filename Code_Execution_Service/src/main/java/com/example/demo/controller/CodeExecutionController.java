@@ -5,6 +5,8 @@ import com.example.demo.service.CodeExecutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -12,6 +14,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/problems")
 public class CodeExecutionController {
+     private static final Logger logger = LoggerFactory.getLogger(CodeExecutionController.class);
 
     @Autowired
     private CodeExecutionService codeExecutionService;
@@ -22,7 +25,8 @@ public class CodeExecutionController {
             request.setRequestId(UUID.randomUUID().toString());
             Map<String, List<String>> result = codeExecutionService.executeCode(request);
 
-           List<String> output =  result.get("output");
+           List<String> output =  result.get("outputs");
+                logger.info(" Code execution completed. Output: {}", output);
 
             if (output == null) {
                 return ResponseEntity.status(500).body(List.of("Execution failed: " + result.getOrDefault("error", List.of("Unknown error"))));
