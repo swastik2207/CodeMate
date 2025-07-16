@@ -49,6 +49,14 @@ public class ProblemController {
     ) throws IOException {
 
         // Convert to absolute path
+
+        if (uploadDir == null || uploadDir.isEmpty()) {
+            throw new RuntimeException("Upload directory is not configured");
+        }
+        if (!new File(uploadDir).isAbsolute()) {
+            throw new RuntimeException("Upload directory must be an absolute path");
+        }
+
         String absoluteUploadDir = new File(uploadDir).getAbsolutePath();
 
         File dir = new File(absoluteUploadDir);
@@ -142,6 +150,18 @@ public ResponseEntity<String> verifySolution(
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("An unexpected error occurred: " + ex.getMessage());
     }
+}
+
+    @GetMapping
+    public List<Problem> getAllProblems() {
+        return problemRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+   public ResponseEntity<Problem> getProblemById(@PathVariable String id) {
+    return problemRepository.findById(id)
+            .map(ResponseEntity::ok)                        // if present, return 200 with body
+            .orElse(ResponseEntity.notFound().build());     // if not, return 404
 }
 
 }

@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - app-network
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+    image: codemate-eureka-server
+    ports:
+      - "8761:8761"
+    depends_on:
+      - kafka
+    networks:
+      - app-network    
+
+  auth-service:
+    build:
+      context: ./auth-service
+    image: codemate-auth-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network
+
+  user-service:
+    build:
+      context: ./user-service
+    image: codemate-user-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network
+
+  
+  problem-service:
+    build:
+      context: ./Problem_Service
+    image: codemate-problem-service
+    ports:
+      - "8089:8089"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network
+
+  
+  code-execution-handler:
+    build:
+      context: ./Code-Execution-Handler
+    image: codemate-code-execution-handler
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network
+
+  code-execution-service:
+    build:
+      context: ./Code_Execution_Service
+    image: codemate-code-execution-service
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network
+
+
+  api-gateway-service:
+    build:
+      context: ./api-gateway-service
+    image: codemate-api-gateway-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+      - eureka-server
+    networks:
+      - app-network   
+
+
+
+
+
+networks:
+  app-network:
+    driver: bridge

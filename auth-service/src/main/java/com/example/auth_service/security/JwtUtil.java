@@ -15,6 +15,7 @@ public class JwtUtil {
     public String generateToken(String username) {
         return Jwts.builder()
             .setSubject(username)
+            .claim("role", "USER")      // Example claim, can be customized
             .setIssuedAt(new Date(System.currentTimeMillis()))
             .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 day
             .signWith(SignatureAlgorithm.HS256, jwtSecret)
