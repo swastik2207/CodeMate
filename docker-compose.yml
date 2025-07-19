@@ -25,9 +25,11 @@ services:
       - app-network
 
   eureka-server:
+    container_name: codemate-eureka-server
     build:
       context: ./eureka-server
     image: codemate-eureka-server
+    
     ports:
       - "8761:8761"
     depends_on:
@@ -36,6 +38,7 @@ services:
       - app-network    
 
   auth-service:
+    container_name: codemate-auth-service
     build:
       context: ./auth-service
     image: codemate-auth-service
@@ -48,11 +51,13 @@ services:
       - app-network
 
   user-service:
+    container_name: codemate-user-service
     build:
       context: ./user-service
     image: codemate-user-service
     ports:
-      - "8082:8080"
+      - "8088:8088"
+      - "587:587"
     depends_on:
       - kafka
       - eureka-server
@@ -61,6 +66,7 @@ services:
 
   
   problem-service:
+    container_name: codemate-problem-service
     build:
       context: ./Problem_Service
     image: codemate-problem-service
@@ -74,6 +80,7 @@ services:
 
   
   code-execution-handler:
+    container_name: codemate-code-execution-handler
     build:
       context: ./Code-Execution-Handler
     image: codemate-code-execution-handler
@@ -86,11 +93,12 @@ services:
       - app-network
 
   code-execution-service:
+    container_name: codemate-code-execution-service
     build:
       context: ./Code_Execution_Service
     image: codemate-code-execution-service
     ports:
-      - "9090:9090"
+      - "8087:8087"
     depends_on:
       - kafka
       - eureka-server
@@ -99,6 +107,7 @@ services:
 
 
   api-gateway-service:
+    container_name: codemate-api-gateway-service
     build:
       context: ./api-gateway-service
     image: codemate-api-gateway-service
@@ -107,6 +116,11 @@ services:
     depends_on:
       - kafka
       - eureka-server
+      - auth-service
+      - user-service
+      - code-execution-handler
+      - code-execution-service
+      - problem-service
     networks:
       - app-network   
 
