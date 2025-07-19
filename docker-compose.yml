@@ -97,6 +97,7 @@ services:
     build:
       context: ./Code_Execution_Service
     image: codemate-code-execution-service
+    privileged: true
     ports:
       - "8087:8087"
     depends_on:
