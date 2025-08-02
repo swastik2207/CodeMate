@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.*;
 import java.util.List;
 
-@Document(collection = "users")  // Maps to the "users" collection in MongoDB
+@Document(collection = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,17 +14,19 @@ import java.util.List;
 public class User {
 
     @Id
-    private String id;  // MongoDB automatically creates a unique _id index
+    private String id;
 
     @Indexed(unique = true)
     private String username;
 
-    private String password; 
-    
-    @Indexed(unique=true) // Should be stored hashed
+    @NonNull
+    private String password;
+
+    @Indexed(unique = true)
     private String email;
+
     private int totalCodeExecutions;
     private List<CodeSubmission> submissions;
-
-    // Add other fields like createdAt, roles, etc.
+    private List<String> solvedProblems;
+    private List<String> groupIds;
 }

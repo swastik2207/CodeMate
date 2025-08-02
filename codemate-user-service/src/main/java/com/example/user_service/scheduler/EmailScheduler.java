@@ -12,7 +12,7 @@ public class EmailScheduler {
     private EmailService emailService;
 
     // Runs every day at 9:00 AM
-    @Scheduled(cron = "0 */2 * * * ?")
+    @Scheduled(cron = "0 0 0 * * ?")
     public void sendDailyReport() {
         emailService.sendEmail(
             "chatterjee.swastik022@gmail.com",

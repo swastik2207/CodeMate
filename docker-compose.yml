@@ -27,7 +27,7 @@ services:
   eureka-server:
     container_name: codemate-eureka-server
     build:
-      context: ./eureka-server
+      context: ./codemate-eureka-server
     image: codemate-eureka-server
     
     ports:
@@ -40,7 +40,7 @@ services:
   auth-service:
     container_name: codemate-auth-service
     build:
-      context: ./auth-service
+      context: ./codemate-auth-service
     image: codemate-auth-service
     ports:
       - "8083:8083"
@@ -53,7 +53,7 @@ services:
   user-service:
     container_name: codemate-user-service
     build:
-      context: ./user-service
+      context: ./codemate-user-service
     image: codemate-user-service
     ports:
       - "8088:8088"
@@ -68,7 +68,7 @@ services:
   problem-service:
     container_name: codemate-problem-service
     build:
-      context: ./Problem_Service
+      context: ./codemate-problem-service
     image: codemate-problem-service
     ports:
       - "8089:8089"
@@ -82,7 +82,7 @@ services:
   code-execution-handler:
     container_name: codemate-code-execution-handler
     build:
-      context: ./Code-Execution-Handler
+      context: ./codemate-code-execution-handler
     image: codemate-code-execution-handler
     ports:
       - "9090:9090"
@@ -95,7 +95,7 @@ services:
   code-execution-service:
     container_name: codemate-code-execution-service
     build:
-      context: ./Code_Execution_Service
+      context: ./codemate-code-execution-service
     image: codemate-code-execution-service
     privileged: true
     ports:
@@ -110,7 +110,7 @@ services:
   api-gateway-service:
     container_name: codemate-api-gateway-service
     build:
-      context: ./api-gateway-service
+      context: ./codemate-api-gateway-service
     image: codemate-api-gateway-service
     ports:
       - "8081:8081"

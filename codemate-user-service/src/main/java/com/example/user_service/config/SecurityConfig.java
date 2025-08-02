@@ -19,6 +19,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/user/**").permitAll()
+                .requestMatchers("/posts/**").permitAll()
+                .requestMatchers("/groups/**").permitAll()
                 .requestMatchers("/user/vo").access((authentication, context) -> {
                     HttpServletRequest request = context.getRequest();
                     String sourceIp = request.getRemoteAddr();
